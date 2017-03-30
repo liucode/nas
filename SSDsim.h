@@ -1,17 +1,21 @@
 #include <stdio.h>
 #include "FTL.h"
+#include <stdlib.h>
 #define GB2MB 10
 #define GB2KB 20
 #define MB2KB 10
+#define GB2B 30
 #define KB2B 10
 #define PFTLNUM 1
+#define BFTLNUM 2
 
 class SSD{
 	public:
 		SSD(int disk_size,int block_size, int page_size, int mem_size,int k_hash_num,int m_offset_num,int policy);
-		void writeSSD(int lbn);
+		void writeSSD(int lbn,char ch);
     char* readSSD(int lbn);
-		~SSD()
+    void randomTest(int n);
+    ~SSD()
     {
       delete myftl;
     }
@@ -29,5 +33,3 @@ class SSD{
 		
 		FTL *myftl;
 };
-
-
