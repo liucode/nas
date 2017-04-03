@@ -16,7 +16,7 @@ disk_size(ds<<GB2B),block_size(bs<<KB2B),page_size(ps<<KB2B),mem_size(ms),k_hash
         break;
       case BFTLNUM:
         {
-          BFTL *bftl = new BFTL(block_num,block_size);
+          BFTL *bftl = new BFTL(block_num,block_size,page_num,page_size);
           myftl = bftl;
         }
         break;
@@ -48,8 +48,16 @@ void SSD::randomTest(int n)
     }
     for(i=0;i<n;i++)
     {
-      readSSD(lbn[i]);
+      //readSSD(lbn[i]);
       //printf("%d:%s\n",lbns[i],readSSD(lbns[i]));
     }
     printf("random test ok\n");
+}
+void SSD::sequenceTest(int n)
+{
+    int i;
+    for(i=0;i<n;i++)
+    {
+      writeSSD(i+2,'1');
+    }
 }

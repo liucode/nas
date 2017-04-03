@@ -5,10 +5,12 @@
 #define FREE 0
 #include "stdio.h"
 #include "string.h"
+#define LBNLEN 32
+# include <stdlib.h>
 class FTL
 {
 	public:
-		FTL(int page_size):page_size(page_size),block_size(block_size)
+		FTL(int page_size,int block_size):page_size(page_size),block_size(block_size)
 		{
 		    fp = open("data",O_RDWR | O_CREAT|O_SYNC,0700);
     }
@@ -35,7 +37,7 @@ class PFTL:public FTL
 {
 	public:
 		int *p_map;
-		PFTL(int page_num,int page_size):FTL(page_size),page_num(page_num)
+		PFTL(int page_num,int page_size):FTL(page_size,0),page_num(page_num)
 		{
 
 			//init p_map-->LBN->PBN
@@ -60,7 +62,7 @@ class BFTL:public FTL
 {
   	public:
 		int *b_map;
-		BFTL(long block_num,int block_size):FTL(block_size),block_num(block_num)
+		BFTL(int block_num,int block_size,int page_num,int page_size):FTL(page_size,block_size),block_num(block_num),page_num(page_num)
 		{
 
 			//init p_map-->LBN->PBN
@@ -70,10 +72,38 @@ class BFTL:public FTL
 			//init valid
 	    valid = new int[block_num];
 			memset(valid,FREE,sizeof(int)*block_num);
+
+      //init page valid
+      p_valid = new int[page_num];
+			memset(p_valid,FREE,sizeof(int)*page_num);
+
+
+
+      //log block
+      logfp = open("log",O_RDWR | O_CREAT|O_SYNC|O_APPEND,0700);
+
+      per_page = page_num/block_num;
+
 		}
+    ~BFTL()
+    {
+      printf("close log file\n");
+      close(logfp);
+    }
 		
 	
   private:
+    int logfp;
 		int block_num;
+    int page_num;
+    int per_page;
+    int *p_valid;
+ 	protected:
+		int findFreePBN();
+		int findPBN(int lbn);
+	  int writeFTL(int lbn,char*data);
+    char* readFTL(int lbn);
+    int movePBN(int b_lbn,int o_lbn,char *data);
+    int writeLOG(int lbn,char *data);
 };
 

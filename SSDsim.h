@@ -15,6 +15,7 @@ class SSD{
 		void writeSSD(int lbn,char ch);
     char* readSSD(int lbn);
     void randomTest(int n);
+    void sequenceTest(int n);
     ~SSD()
     {
       delete myftl;
