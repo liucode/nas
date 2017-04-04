@@ -1,6 +1,7 @@
 #define VALID 1
 #include <fcntl.h>  
 #include <unistd.h>  
+#include "tool.h"
 #define INVALID 2
 #define FREE 0
 #include "stdio.h"
@@ -77,7 +78,7 @@ class BFTL:public FTL
       p_valid = new int[page_num];
 			memset(p_valid,FREE,sizeof(int)*page_num);
 
-
+     
 
       //log block
       logfp = open("log",O_RDWR | O_CREAT|O_SYNC|O_APPEND,0700);
@@ -103,7 +104,60 @@ class BFTL:public FTL
 		int findPBN(int lbn);
 	  int writeFTL(int lbn,char*data);
     char* readFTL(int lbn);
-    int movePBN(int b_lbn,int o_lbn,char *data);
+    int movePBN(int lbn,char *data);
     int writeLOG(int lbn,char *data);
 };
 
+
+class DFTL:public FTL
+{
+  	public:
+		DFTL(int block_num,int block_size,int page_num,int page_size):FTL(page_size,block_size),block_num(block_num),page_num(page_num)
+		{
+
+			//init p_map-->LBN->PBN Global Translation Directory
+			b_map = new int[block_num];
+			memset(b_map,-1,sizeof(int)*block_num);
+
+			//init valid
+	    valid = new int[block_num];
+			memset(valid,FREE,sizeof(int)*block_num);
+
+      //init page valid
+      p_valid = new int[page_num];
+			memset(p_valid,FREE,sizeof(int)*page_num);
+   	  OBB = new int[page_num];
+			memset(p_valid,FREE,sizeof(int)*page_num);
+   		
+      //init cmt
+      cmt = (llist) malloc (sizeof(struct LRUlist));
+      cmt->len = 0;
+      cmt->head = NULL;
+    
+      //init trans file
+      tfp = open("tblock",O_RDWR | O_CREAT|O_SYNC|O_APPEND,0700);
+      per_page = page_num/block_num;
+
+    }
+    ~DFTL()
+    {
+      free(cmt);
+      close(tfp);
+    }
+    private:
+    int block_num;
+    int page_num;
+    int tfp;
+    llist cmt;//Cached Mapping Table
+    int *b_map;//Global Translation Directory
+    int *p_valid;
+    int per_page;
+    int *OBB;
+    protected:
+		int findFreePagePBN();
+    int findFreeBlockPBN();
+		int findPBN(int lbn);
+	  int writeFTL(int lbn,char*data);
+    char* readFTL(int lbn);
+};
+	
