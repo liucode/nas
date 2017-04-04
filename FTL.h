@@ -1,13 +1,14 @@
 #define VALID 1
 #include <fcntl.h>  
 #include <unistd.h>  
-#include "tool.h"
 #define INVALID 2
 #define FREE 0
 #include "stdio.h"
 #include "string.h"
 #define LBNLEN 32
 # include <stdlib.h>
+#include "mytool.h"
+#define LOG 4
 class FTL
 {
 	public:
@@ -84,7 +85,11 @@ class BFTL:public FTL
       logfp = open("log",O_RDWR | O_CREAT|O_SYNC|O_APPEND,0700);
 
       per_page = page_num/block_num;
-
+   	  
+      //init OOB
+      OOB = new int[page_num];
+			memset(p_valid,FREE,sizeof(int)*page_num);
+ 
 		}
     ~BFTL()
     {
@@ -99,6 +104,7 @@ class BFTL:public FTL
     int page_num;
     int per_page;
     int *p_valid;
+    int *OOB;
  	protected:
 		int findFreePBN();
 		int findPBN(int lbn);
@@ -112,7 +118,7 @@ class BFTL:public FTL
 class DFTL:public FTL
 {
   	public:
-		DFTL(int block_num,int block_size,int page_num,int page_size):FTL(page_size,block_size),block_num(block_num),page_num(page_num)
+		DFTL(int block_num,int block_size,int page_num,int page_size,int ms):FTL(page_size,block_size),block_num(block_num),page_num(page_num),ms(ms)
 		{
 
 			//init p_map-->LBN->PBN Global Translation Directory
@@ -126,7 +132,8 @@ class DFTL:public FTL
       //init page valid
       p_valid = new int[page_num];
 			memset(p_valid,FREE,sizeof(int)*page_num);
-   	  OBB = new int[page_num];
+   	  //init OOB
+      OOB = new int[page_num];
 			memset(p_valid,FREE,sizeof(int)*page_num);
    		
       //init cmt
@@ -152,7 +159,8 @@ class DFTL:public FTL
     int *b_map;//Global Translation Directory
     int *p_valid;
     int per_page;
-    int *OBB;
+    int *OOB;
+    int ms;
     protected:
 		int findFreePagePBN();
     int findFreeBlockPBN();

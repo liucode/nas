@@ -1,5 +1,4 @@
 #include "FTL.h"
-
 //FTL common
 char* FTL::readPBN(int pbn)
 {
@@ -90,7 +89,7 @@ int BFTL::writeFTL(int lbn,char *data)
     {
       int pbn = findFreePBN();
       writePBN(pbn*per_page,data);//write in page
-      p_valid[pbn*per_page] = VALID;
+      p_valid[pbn*per_page+o_lbn] = LOG;
       printf("lbn-->pbn:%d-->%d\n",lbn,pbn*per_page); 
       b_map[b_lbn] = pbn;
       valid[pbn] = VALID;
@@ -103,7 +102,7 @@ int BFTL::writeFTL(int lbn,char *data)
   else
   {
     int realpbn = b_map[b_lbn]*per_page;
-    if(p_valid[realpbn+o_lbn-1]!=FREE&&p_valid[realpbn+o_lbn] == FREE)
+    if(p_valid[realpbn+o_lbn-1]==VALID&&p_valid[realpbn+o_lbn] == FREE)
     {
       writePBN(realpbn+o_lbn,data);
       printf("lbn-->pbn:%d-->%d\n",lbn,realpbn+o_lbn);
@@ -112,7 +111,7 @@ int BFTL::writeFTL(int lbn,char *data)
 
     }
     //same overwrite?
-    else if(p_valid[realpbn+o_lbn-1]!=FREE&&p_valid[realpbn+o_lbn] != FREE)
+    else if(p_valid[realpbn+o_lbn-1]!=VALID&&p_valid[realpbn+o_lbn] != FREE)
     {
       printf("lbn:%d overwrite\n",lbn);
       movePBN(lbn,data); 
@@ -121,7 +120,7 @@ int BFTL::writeFTL(int lbn,char *data)
     {
       writePBN(realpbn+o_lbn,data);
       printf("lbn-->pbn:%d-->%d\n",lbn,realpbn+o_lbn);
-      p_valid[realpbn+o_lbn] = VALID;
+      p_valid[realpbn+o_lbn] = LOG;
       OOB[realpbn+o_lbn] = lbn;
 
 
@@ -150,7 +149,7 @@ int BFTL::movePBN(int lbn,char *data)
     for(int i=0;i<per_page;i++)
     {
         char *filedata;
-        if(p_valid[oldblock*perpage+i]==VAILD)
+        if(p_valid[oldblock*per_page+i]==VALID)
         {
           if(i!=o_lbn)
           {
@@ -212,13 +211,13 @@ int BFTL::findPBN(int lbn)
 int DFTL::writeFTL(int lbn,char *data)
 {
   int pbn = findFreePagePBN();
-	lnode findnode = LRUread(list,lbn);
+	lnode findnode = LRUread(cmt,lbn);
   if(findnode != NULL)
   {
     findnode->pbn = pbn;
-    p_valid[findnode->pbn] = Free;
+    p_valid[findnode->pbn] = FREE;
   }
-  lnode m = LRUinsert(cmt,lbn,pbn);
+  lnode m = LRUinsert(cmt,lbn,pbn,ms);
   writePBN(pbn,data);
   printf("lbn-->pbn:%d-->%d\n",lbn,pbn);
   valid[pbn] = VALID;
@@ -268,7 +267,7 @@ int DFTL::writeFTL(int lbn,char *data)
                p_valid[atoi(data)] = FREE;
 
                sprintf(pbnstr,"%032",pbn);//complement lbn
-               pwrite(tfp,,LBNLEN/sizeof(char),newpbn*per_page*LBNLEN+i);
+               pwrite(tfp,pbnstr,LBNLEN/sizeof(char),newpbn*per_page*LBNLEN+i);
             }
           }
         }
@@ -321,7 +320,7 @@ int DFTL::findFreeBlockPBN()
 
 int DFTL::findPBN(int lbn)
 {
-	return p_map[lbn];
+	return b_map[lbn];
 }
 
 
