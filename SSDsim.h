@@ -8,7 +8,7 @@
 #define KB2B 10
 #define PFTLNUM 1
 #define BFTLNUM 2
-
+#define DFTLNUM 3
 class SSD{
 	public:
 		SSD(int disk_size,int block_size, int page_size, int mem_size,int k_hash_num,int m_offset_num,int policy);
@@ -16,6 +16,7 @@ class SSD{
     char* readSSD(int lbn);
     void randomTest(int n);
     void sequenceTest(int n);
+    void printSTATE();
     ~SSD()
     {
       delete myftl;

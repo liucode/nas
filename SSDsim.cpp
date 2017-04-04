@@ -11,7 +11,7 @@ disk_size(ds<<GB2B),block_size(bs<<KB2B),page_size(ps<<KB2B),mem_size(ms),k_hash
 		  case PFTLNUM:
         {
           PFTL *pftl = new PFTL(page_num,page_size);
-			    myftl = pftl;
+	        myftl = pftl;
         }
         break;
       case BFTLNUM:
@@ -20,6 +20,11 @@ disk_size(ds<<GB2B),block_size(bs<<KB2B),page_size(ps<<KB2B),mem_size(ms),k_hash
           myftl = bftl;
         }
         break;
+      case DFTLNUM:
+        {
+          DFTL *dftl = new DFTL(block_num,block_size,page_num,page_size,mem_size);
+          myftl = dftl;
+        }
         
 	 }
 }
@@ -42,7 +47,8 @@ void SSD::randomTest(int n)
     int *lbns = new int[n];
     for(i=0;i<n;i++)
     {
-      int lbn = rand()%(disk_size/page_size);
+      //int lbn = rand()%(disk_size/page_size);
+      int lbn = rand()%n;
       lbns[i] = lbn;
       writeSSD(lbn,'1');
     }
@@ -60,4 +66,9 @@ void SSD::sequenceTest(int n)
     {
       writeSSD(i+2,'1');
     }
+}
+
+void SSD::printSTATE()
+{
+  myftl->printSTATE();
 }

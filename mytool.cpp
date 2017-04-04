@@ -9,14 +9,32 @@ lnode LRUread(llist list,int lbn)
       {
         int pbn = p->pbn;
         //del
-        p->pre->next = p->next;
-        p->next->pre = p->pre;
-        
+        if(p->pre != NULL&&p->next !=NULL)//at last
+        {
+          p->pre->next = p->next;
+          p->next->pre = p->pre;
+        }
+        else if(p->pre !=NULL&&p->next == NULL)
+        {
+          list->tail = p->pre;
+          p->pre->next = p->next;
+        }
+        else if(p->next!=NULL&&p->pre == NULL)
+        {
+          p->next->pre = p->pre;
+        }
+        else
+        {
+            list->head = NULL;
+            list->tail = NULL;
+        }
         //insert
         p->next = list->head;
         list->head->pre = p;
         p->pre = NULL;
         list->head = p;
+        if(list->head->next == NULL)
+          list->tail = p;
         return p;
       }
       p = p->next;
@@ -33,11 +51,13 @@ lnode LRUinsert(llist list,int lbn,int pbn,int ms)
       p->lbn = lbn;
       p->pbn = pbn;
 
-      if(list->head =NULL)
+      if(list->head == NULL)
       {
         list->head = p;
+        list->tail = p;
         list->head->pre = NULL;
         list->head->next = NULL;
+        return NULL;
       }
       
       p->next = list->head;

@@ -9,6 +9,7 @@
 # include <stdlib.h>
 #include "mytool.h"
 #define LOG 4
+#define DEBUG 1
 class FTL
 {
 	public:
@@ -22,6 +23,7 @@ class FTL
         close(fp);
     }
 		virtual int  writeFTL(int lbn,char *data){};
+    void printSTATE();
 		virtual char *readFTL(int lbn){};
 	protected:
 		int block_size;
@@ -32,7 +34,16 @@ class FTL
 		int writePBN(int pbn,char *data);
 		char *readPBN(int pbn);
 		int fp;
-	
+
+
+    //statistics
+    int movenum =0;
+    int logwritenum = 0;
+    int cachenum =0;
+    int pagewritenum = 0;
+    int overwritenum = 0;
+	  int tblocknum = 0;
+    
 };
 
 class PFTL:public FTL
@@ -132,7 +143,12 @@ class DFTL:public FTL
       //init page valid
       p_valid = new int[page_num];
 			memset(p_valid,FREE,sizeof(int)*page_num);
-   	  //init OOB
+   	   
+      //init translation block valid
+      tb_valid = new int[page_num];
+			memset(tb_valid,FREE,sizeof(int)*page_num);
+   	  
+      //init OOB
       OOB = new int[page_num];
 			memset(p_valid,FREE,sizeof(int)*page_num);
    		
@@ -158,6 +174,7 @@ class DFTL:public FTL
     llist cmt;//Cached Mapping Table
     int *b_map;//Global Translation Directory
     int *p_valid;
+    int *tb_valid;
     int per_page;
     int *OOB;
     int ms;
