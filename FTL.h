@@ -185,4 +185,66 @@ class DFTL:public FTL
 	  int writeFTL(int lbn,char*data);
     char* readFTL(int lbn);
 };
+
+
+class HFTL:public FTL
+{
+  	public:
+		DFTL(int block_num,int block_size,int page_num,int page_size,int ms):FTL(page_size,block_size),block_num(block_num),page_num(page_num),khn(khn),mon(mon)
+		{
+
+			//init p_map-->LBN->PBN Global Translation Directory
+			p_map = new int[page_num];
+			memset(p_map,-1,sizeof(int)*block_num);
+
+			//init valid :get it used hash()
+	    valid = new int[block_num];
+			memset(valid,FREE,sizeof(int)*block_num);
+
+      //init page valid
+      p_valid = new int[page_num];
+			memset(p_valid,FREE,sizeof(int)*page_num);
+   	   
+   	  
+      //init OOB
+      OOB = new int[page_num];
+			memset(p_valid,FREE,sizeof(int)*page_num);
+   		
+    
+      //init trans file
+      tfp = open("tblock",O_RDWR | O_CREAT|O_SYNC|O_APPEND,0700);
+      per_page = page_num/block_num;
+
+    }
+    ~DFTL()
+    {
+      free(cmt);
+      close(tfp);
+    }
+    private:
+    int khn;// n binary
+    int mon;
+
+
+    int block_num;
+    int page_num;
+    
+    int tfp;
+    
+    int *p_valid;
+    
+    int per_page;
+    int *OOB;
+    int *p_map;
+
+    int turepbn;
+    
+    llist cmt;
+    protected:
+		int findFreePBN();
+    int findTruePBN(int lbn);
+		int findPBN(int lbn);
+	  int writeFTL(int lbn,char*data);
+    char* readFTL(int lbn);
+};
 	

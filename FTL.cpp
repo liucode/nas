@@ -80,8 +80,8 @@ int PFTL::findPBN(int lbn)
 //lbn limited(the same overwrite)
 int BFTL::writeFTL(int lbn,char *data)
 {
-  int o_lbn = lbn%64;
-  int b_lbn = lbn/64;
+  int o_lbn = lbn%per_page;
+  int b_lbn = lbn/per_page;
   if(b_map[b_lbn]==-1)//no block mapping
   {
     if(o_lbn == 0)//first
@@ -157,8 +157,8 @@ int BFTL::writeLOG(int lbn,char *data)
 
 int BFTL::movePBN(int lbn,char *data)
 { 
-    int o_lbn = lbn%64;
-    int b_lbn = lbn/64;
+    int o_lbn = lbn%per_page;
+    int b_lbn = lbn/per_page;
   
     valid[b_map[b_lbn]] = INVALID;
     int oldblock = b_map[b_lbn];
@@ -195,8 +195,8 @@ int BFTL::movePBN(int lbn,char *data)
 //no complete
 char* BFTL::readFTL(int lbn)
 {
-  int o_lbn = lbn%64;
-  int b_lbn = lbn/64;
+  int o_lbn = lbn%per_page;
+  int b_lbn = lbn/per_page;
   int pbn = findPBN(b_lbn);
 	char *data;
   if(valid[pbn] == VALID)
@@ -235,14 +235,18 @@ int DFTL::writeFTL(int lbn,char *data)
 {
   int pbn = findFreePagePBN();
   writePBN(pbn,data);
+  if(lbn==917&&pbn==213)
+  {
+    int k =1;
+  }
   if(DEBUG)
   printf("lbn-->pbn:%d-->%d\n",lbn,pbn);
   p_valid[pbn] = VALID;
-  lnode findnode = LRUread(cmt,lbn);
+  lnode findnode = LRUread(cmt,lbn,ms);
   if(findnode != NULL)
   {
     p_valid[findnode->pbn] = FREE;
-    findnode->pbn = pbn;
+    cmt->head->pbn = pbn;
     if(DEBUG)
     printf("in cache %d\n",lbn);  
     cachenum++;
@@ -258,8 +262,8 @@ int DFTL::writeFTL(int lbn,char *data)
     }
     else//really write 
     {
-      int o_lbn = m->lbn%64;
-      int b_lbn = m->lbn/64;
+      int o_lbn = m->lbn%per_page;
+      int b_lbn = m->lbn/per_page;
       if(DEBUG)
       printf("delete CMT lbn-->pbn:%d-->%d\n",m->lbn,m->pbn);
       //first
@@ -329,15 +333,15 @@ int DFTL::writeFTL(int lbn,char *data)
 char* DFTL::readFTL(int lbn)
 { 
   int realpbn;
-  lnode findnode = LRUread(cmt,lbn);
+  lnode findnode = LRUread(cmt,lbn,ms);
   if(findnode!=NULL)
   {
       realpbn = findnode->pbn;
   }
   else
   {
-    int o_lbn = lbn%64;
-    int b_lbn = lbn/64;
+    int o_lbn = lbn%per_page;
+    int b_lbn = lbn/per_page;
     int pbn = findPBN(b_lbn);
 	  char *data;
     realpbn = pbn*per_page+o_lbn;
@@ -386,4 +390,99 @@ int DFTL::findPBN(int lbn)
 	return b_map[lbn];
 }
 
+
+//HFTL
+int HFTL::writeFTL(int lbn,char *data)
+{
+	int shortpbn = findFreePBN();
+  if(shortpbn == -1)//not found
+  {
+      if(DEBUG)
+        printf("not found free page\n");
+      for(int i=0;i<page_num;i++)
+      {
+        if(p_valid[i] == FREE)
+        {
+          truepbn = i;
+          break;
+        }
+      }
+      NMinsert(cmt,lbn,pbn);
+  }
+  else
+  {
+    if(truepbn!=0)
+    {
+      writePBN(truepbn,data);
+      OOB[truepbn] = lbn;
+    }
+    if(DEBUG)
+      printf("lbn-->pbn:%d-->%d\n",lbn,truepbn);
+    p_map[lbn] = shortpbn;
+    p_valid[pbn] = VALID;
+  }
+	return 1;
+}
+
+char* HFTL::readFTL(int lbn)
+{
+	int pbn = findPBN(lbn);
+  truepbn = findTruePBN(pbn);
+	char *data;
+  if(valid[pbn] == VALID)
+  {
+    data = readPBN(pbn);
+  }
+  else
+  {
+    data = new char[10];
+    strcpy(data,"not found\n");
+  }
+	return data;
+}
+int HFTL::findFreePBN(int lbn)
+{
+	int i,j;
+	for(i=0;i<power(2,khn);i++)
+	{
+		  int k = lbn>>i;
+      k = k%block_num;
+      for(j=0;j<pow(2,mon);j++)
+      {
+        int m = per_page/power(2,mon);//aslo need m 
+        int offset = j*m+(lbn%m);
+        if(OOB[k*per_page+offset] == lbn)//overwrite
+        {
+            overwritenum++;
+            if(DEBUG)
+              printf("overwrite lbn-->pbn\n",truepbn,lbn);
+            p_map[k*per_page+offset] = FREE;
+            truepbn = k*per_page+offset;
+            return i*power(2,mon)+j;
+        }
+
+        if(p_map[k*per_page+offset] == FREE)
+        {
+          truepbn = k*per_page+offset;
+          return i*power(2,mon)+j;
+        }
+      }
+     }
+	return -1;
+}
+
+int HFTL::findPBN(int lbn)
+{
+	return p_map[lbn];
+}
+
+int HFTL::findTruePBN(int lbn,int pbn)
+{
+   int k = pbn/power(2,mon);
+   k  = lbn>>k;
+   k = k%block_num;
+   int m = per_page/power(2,mon);//aslo need m 
+   int offset = pbn%power(2,mon)*m+lbn%m;
+   return k*per_page+offset;
+}
 
