@@ -9,6 +9,7 @@
 #define PFTLNUM 1
 #define BFTLNUM 2
 #define DFTLNUM 3
+#define HFTLNUM 4
 class SSD{
 	public:
 		SSD(int disk_size,int block_size, int page_size, int mem_size,int k_hash_num,int m_offset_num,int policy);

@@ -1,15 +1,16 @@
 #define VALID 1
 #include <fcntl.h>  
 #include <unistd.h>  
+#include "math.h"
 #define INVALID 2
 #define FREE 0
 #include "stdio.h"
 #include "string.h"
 #define LBNLEN 32
-# include <stdlib.h>
+#include <stdlib.h>
 #include "mytool.h"
 #define LOG 4
-#define DEBUG 1
+#define DEBUG 0
 class FTL
 {
 	public:
@@ -190,12 +191,11 @@ class DFTL:public FTL
 class HFTL:public FTL
 {
   	public:
-		DFTL(int block_num,int block_size,int page_num,int page_size,int ms):FTL(page_size,block_size),block_num(block_num),page_num(page_num),khn(khn),mon(mon)
+		HFTL(int block_num,int block_size,int page_num,int page_size,int ms,int khn,int mon):FTL(page_size,block_size),block_num(block_num),page_num(page_num),khn(khn),mon(mon)
 		{
-
 			//init p_map-->LBN->PBN Global Translation Directory
 			p_map = new int[page_num];
-			memset(p_map,-1,sizeof(int)*block_num);
+			memset(p_map,-1,sizeof(int)*page_num);
 
 			//init valid :get it used hash()
 	    valid = new int[block_num];
@@ -210,13 +210,18 @@ class HFTL:public FTL
       OOB = new int[page_num];
 			memset(p_valid,FREE,sizeof(int)*page_num);
    		
-    
       //init trans file
       tfp = open("tblock",O_RDWR | O_CREAT|O_SYNC|O_APPEND,0700);
       per_page = page_num/block_num;
+      
+      //init cmt
+      cmt = (llist) malloc (sizeof(struct LRUlist));
+      cmt->len = 0;
+      cmt->head = NULL;
+    
 
     }
-    ~DFTL()
+    ~HFTL()
     {
       free(cmt);
       close(tfp);
@@ -237,14 +242,13 @@ class HFTL:public FTL
     int *OOB;
     int *p_map;
 
-    int turepbn;
+    int truepbn;
     
     llist cmt;
     protected:
-		int findFreePBN();
-    int findTruePBN(int lbn);
+		int findFreePBN(int lbn);
+    int findTruePBN(int lbn,int pbn);
 		int findPBN(int lbn);
 	  int writeFTL(int lbn,char*data);
     char* readFTL(int lbn);
 };
-	

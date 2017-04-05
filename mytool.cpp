@@ -41,8 +41,8 @@ lnode LRUread(llist list,int lbn,int ms)
 // true: NULL delete:lnode
 lnode LRUinsert(llist list,int lbn,int pbn,int ms)
 {
-      if(list->tail!=NULL)
-      printf("tail: %d -->%d\n",list->tail->lbn,list->tail->pbn);
+      //if(list->tail!=NULL)
+      //printf("tail: %d -->%d\n",list->tail->lbn,list->tail->pbn);
       lnode p=(lnode)malloc(sizeof(struct LRUnode));
       lnode q = NULL;
       p->lbn = lbn;
@@ -147,7 +147,6 @@ lnode NMfind(llist list,int lbn)
     {
       if(lbn == p->lbn)
       {
-        p->pbn = pbn;
         return p;
       }
       p = p->next;
