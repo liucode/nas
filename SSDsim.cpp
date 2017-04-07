@@ -1,11 +1,27 @@
 #include "SSDsim.h"
 //init
 SSD::SSD(int ds,int bs, int ps, int ms,int khn,int mon,int p):
-disk_size(ds<<GB2B),block_size(bs<<KB2B),page_size(ps<<KB2B),mem_size(ms),k_hash_num(khn),m_offset_num(mon),policy(p)
+disk_size(ds<<GB2KB),block_size(bs),page_size(ps),mem_size(ms<<MB2KB),k_hash_num(khn),m_offset_num(mon),policy(p)
 {
 
 	 int block_num = disk_size/block_size;
 	 int page_num = disk_size/page_size;
+   
+   //mem state
+   int pftl_level = page_num*4/1024;
+   int bftl_level = block_num*4/1024;
+   
+   int dftl_level = bftl_level;//second size
+   int dnum  = (mem_size - dftl_level)/8*1024;//first num;
+
+   int hftl_level = (k_hash_num+m_offset_num)*page_num/32/1024;//first
+   int hftl_len = (mem_size-hftl_level)/8*1024;
+
+   printf("page:%d\nblock:%d\nDFTL cache num:%d\nHFTL table num:%d\n",pftl_level,bftl_level,dnum,hftl_len);
+   
+   page_size = page_size<<KB2B;
+   block_size = block_size<<KB2B;
+   
    switch(policy)
 	 {			
 		  case PFTLNUM:
@@ -22,7 +38,7 @@ disk_size(ds<<GB2B),block_size(bs<<KB2B),page_size(ps<<KB2B),mem_size(ms),k_hash
         break;
       case DFTLNUM:
         {
-          DFTL *dftl = new DFTL(block_num,block_size,page_num,page_size,mem_size);
+          DFTL *dftl = new DFTL(block_num,block_size,page_num,page_size,dnum);
           myftl = dftl;
         }
         break;
@@ -51,6 +67,8 @@ char* SSD::readSSD(int lbn)
 void SSD::randomTest(int n)
 {
     int i;
+    if(n==0)
+      n = disk_size/page_size*1024/2;
     int *lbns = new int[n];
     for(i=0;i<n;i++)
     {
@@ -58,11 +76,12 @@ void SSD::randomTest(int n)
       //int lbn = rand()%n;
       lbns[i] = lbn;
       writeSSD(lbn,'1');
+      //printf("%d\n",i);
     }
     for(i=0;i<n;i++)
     {
-      //readSSD(lbn[i]);
-    //  printf("%d:%s\n",lbns[i],readSSD(lbns[i]));
+      //readSSD(lbns[i]);
+      //printf("%d:%s\n",lbns[i],readSSD(lbns[i]));
     }
     printf("random test ok\n");
 }

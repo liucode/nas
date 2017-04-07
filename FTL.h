@@ -6,7 +6,8 @@
 #define FREE 0
 #include "stdio.h"
 #include "string.h"
-#define LBNLEN 32
+#define LBNLEN 512
+#define DATALEN 512
 #include <stdlib.h>
 #include "mytool.h"
 #define LOG 4
@@ -16,7 +17,7 @@ class FTL
 	public:
 		FTL(int page_size,int block_size):page_size(page_size),block_size(block_size)
 		{
-		    fp = open("data",O_RDWR | O_CREAT|O_SYNC,0700);
+		    fp = open("data",O_RDWR | O_CREAT|O_DIRECT,0700);
     }
     ~FTL()
     {
@@ -94,7 +95,7 @@ class BFTL:public FTL
      
 
       //log block
-      logfp = open("log",O_RDWR | O_CREAT|O_SYNC|O_APPEND,0700);
+      logfp = open("log",O_RDWR|O_CREAT|O_DIRECT|O_APPEND,0700);
 
       per_page = page_num/block_num;
    	  
@@ -159,7 +160,7 @@ class DFTL:public FTL
       cmt->head = NULL;
     
       //init trans file
-      tfp = open("tblock",O_RDWR | O_CREAT|O_SYNC|O_APPEND,0700);
+      tfp = open("tblock",O_RDWR|O_CREAT|O_DIRECT,0700);
       per_page = page_num/block_num;
 
     }
@@ -185,6 +186,7 @@ class DFTL:public FTL
 		int findPBN(int lbn);
 	  int writeFTL(int lbn,char*data);
     char* readFTL(int lbn);
+    void liupwrite(int fp,int data,int len,int offset);
 };
 
 
@@ -210,23 +212,25 @@ class HFTL:public FTL
       OOB = new int[page_num];
 			memset(p_valid,FREE,sizeof(int)*page_num);
    		
-      //init trans file
-      tfp = open("tblock",O_RDWR | O_CREAT|O_SYNC|O_APPEND,0700);
       per_page = page_num/block_num;
       
       //init cmt
-      cmt = (llist) malloc (sizeof(struct LRUlist));
-      cmt->len = 0;
-      cmt->head = NULL;
-    
+      cmt = new hnode[hashlen];
+      for(int i=0;i<hashlen;i++)
+      {
+        cmt[i] = NULL;
+      }
 
     }
     ~HFTL()
     {
       free(cmt);
-      close(tfp);
     }
     private:
+    int hashlen = 100;
+    
+    hnode *cmt;
+
     int khn;// n binary
     int mon;
 
@@ -244,7 +248,6 @@ class HFTL:public FTL
 
     int truepbn;
     
-    llist cmt;
     protected:
 		int findFreePBN(int lbn);
     int findTruePBN(int lbn,int pbn);

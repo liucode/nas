@@ -1,5 +1,28 @@
 #include "mytool.h"
 
+int mymd5(int input)
+{
+    int i;
+    unsigned char  d[16];
+    char *out = NULL;
+    char password[32];
+    sprintf (password,"%d",input);
+    MD5_CTX x;
+    MD5_Init(&x);
+    MD5_Update(&x,(char*)password,strlen(password));
+    MD5_Final(d,&x);
+    out = new char[9];
+    memset (out, 0x00, 9);
+    for  (i = 0; i < 9; i++)
+    {
+      sprintf (out+i, "%d" , d[i]);  // 转换为32位
+    }
+    int m = strtoul(out, NULL, 0);
+    if(m<0)
+      m = 0-m;
+    return m;
+}
+
 lnode LRUread(llist list,int lbn,int ms)
 {
     lnode p = list->head;
@@ -29,8 +52,10 @@ lnode LRUread(llist list,int lbn,int ms)
             list->head = NULL;
             list->tail = NULL;
         }
+        list->len--;
         //insert
-        return LRUinsert(list,lbn,pbn,ms);
+        LRUinsert(list,lbn,pbn,ms);
+        return list->head;
       }
       p = p->next;
     }
@@ -110,6 +135,7 @@ int LRUdelete(llist list,int lbn)
 }
 
 
+
 int NMinsert(llist list,int lbn,int pbn)
 {
     lnode p = list->tail;
@@ -152,5 +178,64 @@ lnode NMfind(llist list,int lbn)
       p = p->next;
     }
     return NULL;
+}
 
+
+//HASH
+int HSinsert(hnode *list,int lbn,int pbn,int hashlen)
+{
+    int k = lbn%hashlen;
+    if(list[k] == NULL)
+    {
+      hnode q = (hnode)malloc(sizeof(struct HASHnode));
+      q->lbn = lbn;
+      q->pbn = pbn;
+      q->next = NULL;
+      list[k] = q;
+    }
+    else
+    {
+      hnode p;
+      p = list[k];
+      while(p->next)
+      {
+          if(p->lbn == lbn)
+          {
+            p->pbn = pbn;
+            return 1;
+          }
+          p = p->next;
+      }
+      if(p->lbn == lbn)
+      {
+        p->pbn = pbn;
+        return 1;
+      }
+      hnode q = (hnode)malloc(sizeof(struct HASHnode));
+      q->lbn = lbn;
+      q->pbn = pbn;
+      q->next = NULL;
+      p->next =q;
+    }
+    return 0;
+}
+hnode HSfind(hnode *list,int lbn,int hashlen)
+{
+      int k=lbn%hashlen;
+      hnode p;
+      p = list[k];
+      while(p->next)
+      {
+          if(p->lbn == lbn)
+          {
+            return p;
+          }
+          p = p->next;
+      }
+      if(p->lbn == lbn)
+      {
+        return p;
+      }
+      return NULL;
+ 
 }
