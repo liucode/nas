@@ -3,7 +3,7 @@
 
 void FTL::printSTATE()
 {
-  printf("the number of moving:%d\nthe number of writing in log:%d\nthe number of cache hit:%d\nthe number of page writing:%d\nthe number of overwriting:%d\nthe number of translation block writing:%d\n",movenum,logwritenum,cachenum,pagewritenum,overwritenum,tblocknum);
+ printf("the number of moving:%d\nthe number of writing in log:%d\nthe number of cache hit:%d\nthe number of page writing:%d\nthe number of overwriting:%d\nthe number of translation block writing:%d\nthe number of find:%d\nthe number of ex read:%d\n",movenum,logwritenum,cachenum,pagewritenum,overwritenum,tblocknum,findnum,exreadnum);
 }
 
 char* FTL::readPBN(int pbn)
@@ -14,30 +14,35 @@ char* FTL::readPBN(int pbn)
   if (posix_memalign(&align_buf,DATALEN,page_size) != 0) 
   {
         printf("memalign failed\n");
-        exit(0);
+        assert(0);
   }
-	
-  pread(fp,align_buf,page_size/sizeof(char),pbn*page_size);
+	long offset = (long)pbn*(long)page_size;
+  pread(fp,align_buf,page_size/sizeof(char),offset);
   return (char*)align_buf;
 }
 
 int FTL::writePBN(int pbn,char *data)
 {
+
+  pagefind = pbn;
+
   if(DEBUG)
     printf("write pbn:%d\n",pbn);
   pagewritenum++;
   
+
   void *align_buf = NULL;
   if (posix_memalign(&align_buf,DATALEN,page_size) != 0) 
   {
         printf("memalign failed\n");
-        exit(0);
+        assert(0);
   }
   strcpy((char *)align_buf,data);
-  if(pwrite(fp,align_buf,page_size/sizeof(char),pbn*page_size)==-1)
+  long offset = (long)pbn*(long)page_size;
+  if(pwrite(fp,align_buf,page_size/sizeof(char),offset)==-1)
   {
     printf("error writePBN\n");
-    exit(0);
+    assert(0);
   }
 	return 1;
 }
@@ -79,12 +84,15 @@ char* PFTL::readFTL(int lbn)
   }
 	return data;
 }
+
+//FINDFREE slow
 int PFTL::findFreePBN()
 {
 	int i;
-	for(i=0;i<page_num;i++)
+  for(i=pagefind+1;i<page_num+pagefind;i++)
 	{
-		if(valid[i] == FREE)
+	  findnum++;
+		if(valid[i%page_num] == FREE)
 		{
 			return i;
 		}
@@ -170,25 +178,25 @@ int BFTL::writeLOG(int lbn,char *data)
     if (posix_memalign(&align_buf,LBNLEN,LBNLEN)!= 0) 
     {
         printf("memalign failed\n");
-        exit(0);
+        assert(0);
     }
     sprintf((char*)align_buf,"%0512d",lbn);//complement lbn
     if(write(logfp,align_buf,LBNLEN)==-1)
     {
         printf("error write log\n");
-        exit(0);
+        assert(0);
     }
     void *data_buf = NULL;
     if (posix_memalign(&data_buf,512,page_size)!= 0) 
     {
         printf("memalign failed\n");
-        exit(0);
+        assert(0);
     }
     strcpy((char*)data_buf,data);
     if(write(logfp,data_buf,page_size)==-1)
     {
       printf("error write log data\n");
-      exit(0);
+      assert(0);
     }
     return 1;
 }
@@ -208,6 +216,7 @@ int BFTL::movePBN(int lbn,char *data)
         {
           if(i!=o_lbn)
           {
+            exreadnum++;
             filedata = readPBN(oldblock*per_page+i);
             writePBN(newblock*per_page+i,filedata);
             p_valid[newblock*per_page+i] = VALID;
@@ -224,6 +233,7 @@ int BFTL::movePBN(int lbn,char *data)
     if(DEBUG)
       printf("move:%d-->%d\n",oldblock,newblock);
     valid[newblock] = VALID;
+    valid[oldblock] = FREE;
     b_map[b_lbn] = newblock;
     return 1;
 }
@@ -251,13 +261,16 @@ char* BFTL::readFTL(int lbn)
 int BFTL::findFreePBN()
 {
 	int i;
-	for(i=0;i<block_num;i++)
+	for(i=blockfind+1;i<block_num+blockfind;i++)
 	{
-		if(valid[i] == FREE)
+		findnum++;
+    if(valid[i%block_num] == FREE)
 		{
-			return i;
+      blockfind = i%block_num;
+			return i%block_num;
 		}
 	}
+  printf("no enough block\n");
 	return -1;
 }
 
@@ -273,13 +286,13 @@ void DFTL::liupwrite(int fp,int data,int len,int offset)
     if (posix_memalign(&align_buf,LBNLEN,LBNLEN)!= 0) 
     {
         printf("memalign failed\n");
-        exit(0);
+        assert(0);
     }
     sprintf((char*)align_buf,"%0512d",data);//complement lbn
     if(pwrite(fp,align_buf,LBNLEN,offset)==-1)
     {
       printf("error writePBN\n");
-      exit(0);
+      assert(0);
     }
     return ;
 }
@@ -291,10 +304,10 @@ int DFTL::writeFTL(int lbn,char *data)
   if(DEBUG)
     printf("lbn-->pbn:%d-->%d\n",lbn,pbn);
   p_valid[pbn] = VALID;
-  lnode findnode = LRUread(cmt,lbn,ms);
+  lnode findnode = HSLread(ht,cmt,lbn,ms);
   if(findnode != NULL)
   {
-    p_valid[findnode->pbn] = FREE;
+    p_valid[findnode->pbn] = INVALID;
     cmt->head->pbn = pbn;
     if(DEBUG)
     printf("in cache %d\n",lbn);  
@@ -303,7 +316,7 @@ int DFTL::writeFTL(int lbn,char *data)
   }
   else
   {
-    lnode m = LRUinsert(cmt,lbn,pbn,ms);
+    lnode m = HSLinsert(ht,cmt,lbn,pbn,ms);
   //if NULL,NO write 
     if(m == NULL)
     {
@@ -319,6 +332,7 @@ int DFTL::writeFTL(int lbn,char *data)
       if(b_map[b_lbn] == -1)
       {
         int newpbn = findFreeBlockPBN();
+        
         b_map[b_lbn] = newpbn;
         valid[newpbn] = VALID;
         int newpagepbn = m->pbn;
@@ -341,7 +355,7 @@ int DFTL::writeFTL(int lbn,char *data)
           tblocknum++;
           liupwrite(tfp,newpagepbn,LBNLEN,per_page*bpbn*LBNLEN+o_lbn*LBNLEN);
           if(DEBUG)
-            printf("tblock: %d-->%d\n",per_page*bpbn+o_lbn,newpagepbn);
+            printf("add tblock: %d-->%d\n",per_page*bpbn+o_lbn,newpagepbn);
           tb_valid[bpbn*per_page+o_lbn] = VALID;
         }
         else
@@ -357,6 +371,7 @@ int DFTL::writeFTL(int lbn,char *data)
           {
               if(tb_valid[oldpbn*per_page+i] == VALID)
               {
+                exreadnum++;
                 char * data_t = (char *)data;
                 pread(tfp,data_t,LBNLEN/sizeof(char),oldpbn*per_page*LBNLEN+i*LBNLEN);
                 liupwrite(tfp,atoi(data_t),LBNLEN/sizeof(char),newpbn*per_page*LBNLEN+i*LBNLEN);
@@ -381,7 +396,7 @@ char* DFTL::readFTL(int lbn)
   int realpbn;
   if(DEBUG)
     printf("read lbn:%d\n",lbn);
-  lnode findnode = LRUread(cmt,lbn,ms);
+  lnode findnode = HSLread(ht,cmt,lbn,ms);
   if(findnode!=NULL)
   {
       realpbn = findnode->pbn;
@@ -416,9 +431,10 @@ char* DFTL::readFTL(int lbn)
 int DFTL::findFreePagePBN()
 {
 	int i;
-	for(i=0;i<page_num;i++)
+	for(i=pagefind+1;i<page_num+pagefind;i++)
 	{
-		if(p_valid[i] == FREE)
+    findnum++;
+		if(p_valid[i%page_num] == FREE)
 		{
 			return i;
 		}
@@ -429,11 +445,13 @@ int DFTL::findFreePagePBN()
 int DFTL::findFreeBlockPBN()
 {
   int i;
-	for(i=0;i<page_num;i++)
+	for(i=blockfind+1;i<block_num+blockfind;i++)
 	{
-		if(valid[i] == FREE)
+		findnum++;
+    if(valid[i%block_num] == FREE)
 		{
-			return i;
+      blockfind = i%block_num;
+      return i%block_num;
 		}
 	}
 	return -1;  
@@ -471,7 +489,7 @@ int HFTL::writeFTL(int lbn,char *data)
           break;
         }
       }
-      HSinsert(cmt,lbn,truepbn,hashlen);
+      HSinsert(cmt,lbn,truepbn,HASHLEN);
       writePBN(truepbn,data);
       if(DEBUG)
         printf("write log lbn-->pbn:%d-->%d\n",lbn,truepbn);
@@ -483,6 +501,10 @@ int HFTL::writeFTL(int lbn,char *data)
     if(truepbn!=0)
     {
       writePBN(truepbn,data);
+    }
+    else
+    {
+      assert(0);
     }
     if(DEBUG)
       printf("lbn-->pbn:%d-->%d\n",lbn,truepbn);
@@ -499,7 +521,7 @@ char* HFTL::readFTL(int lbn)
     printf("read LBN:%d\n",lbn);
   if(pbn/pow(2,mon)==pow(2,khn)-1)
   {
-    hnode p = HSfind(cmt,lbn,hashlen);
+    hnode p = HSfind(cmt,lbn,HASHLEN);
     truepbn = p->pbn;
   }
   else
@@ -529,6 +551,7 @@ int HFTL::findFreePBN(int lbn)
       k = k%block_num;
       for(j=0;j<pow(2,mon);j++)
       {
+        findnum++;
         int m = per_page/pow(2,mon);//aslo need m 
         int offset = j*m+(lbn%m);
         if(offset == 0&&p_valid[k*per_page+offset] == FREE||p_valid[k*per_page+offset] == FREE&&p_valid[k*per_page+offset-1] != FREE)

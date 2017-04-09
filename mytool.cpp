@@ -1,5 +1,4 @@
 #include "mytool.h"
-
 int mymd5(int input)
 {
     int i;
@@ -23,13 +22,8 @@ int mymd5(int input)
     return m;
 }
 
-lnode LRUread(llist list,int lbn,int ms)
+lnode LRUread(llist list,lnode p,int ms)
 {
-    lnode p = list->head;
-    while(p)
-    {
-      if(p->lbn == lbn)
-      {
         int pbn = p->pbn;
         //del
         if(p->pre != NULL&&p->next !=NULL)//at last
@@ -44,8 +38,8 @@ lnode LRUread(llist list,int lbn,int ms)
         }
         else if(p->next!=NULL&&p->pre == NULL)
         {
-          list->head = p->pre;
-          p->next->pre = p->pre;
+            list->head = p->next;
+            p->next->pre = p->pre;
         }
         else
         {
@@ -54,25 +48,17 @@ lnode LRUread(llist list,int lbn,int ms)
         }
         list->len--;
         //insert
-        LRUinsert(list,lbn,pbn,ms);
-        return list->head;
-      }
-      p = p->next;
-    }
-    return NULL;
+        LRUinsert(list,p,ms);
+        return NULL;
 }
 
 
 // true: NULL delete:lnode
-lnode LRUinsert(llist list,int lbn,int pbn,int ms)
+lnode LRUinsert(llist list,lnode p,int ms)
 {
       //if(list->tail!=NULL)
       //printf("tail: %d -->%d\n",list->tail->lbn,list->tail->pbn);
-      lnode p=(lnode)malloc(sizeof(struct LRUnode));
       lnode q = NULL;
-      p->lbn = lbn;
-      p->pbn = pbn;
-
       if(list->head == NULL)
       {
         p->pre =NULL;
@@ -96,7 +82,7 @@ lnode LRUinsert(llist list,int lbn,int pbn,int ms)
         q = list->tail;
         list->tail->pre->next = NULL;
         list->tail = list->tail->pre;
-      }
+     }
       return q;
 }
 
@@ -239,3 +225,84 @@ hnode HSfind(hnode *list,int lbn,int hashlen)
       return NULL;
  
 }
+
+
+//HASH+LRU
+lnode HSLinsert(lnode *ht,llist lt,int lbn,int pbn,int ms)
+{
+    int k = lbn%HASHLEN;
+    lnode l=NULL;
+    if(ht[k] == NULL)
+    {
+      lnode q = (lnode)malloc(sizeof(struct LRUnode));
+      q->lbn = lbn;
+      q->pbn = pbn;
+      q->hashnext = NULL;
+      q->hashpre = NULL;
+      ht[k] = q;
+      l = LRUinsert(lt,q,ms);
+    }
+    else
+    {
+      lnode p;
+      p = ht[k];
+      while(p->hashnext)
+      {
+          if(p->lbn == lbn)
+          {
+            p->pbn = pbn;
+            LRUread(lt,p,ms);
+            return NULL;
+          }
+          p = p->hashnext;
+      }
+      if(p->lbn == lbn)
+      {
+        p->pbn = pbn;
+        LRUread(lt,p,ms);
+        return p;
+      }
+      lnode q = (lnode)malloc(sizeof(struct LRUnode));
+      q->lbn = lbn;
+      q->pbn = pbn;
+      q->hashnext = NULL;
+      p->hashnext =q;
+      q->hashpre = p;
+      l = LRUinsert(lt,q,ms);
+    }
+    if(l!=NULL)
+    {
+        if(l->hashpre !=NULL)
+        {
+          l->hashpre->hashnext = l->hashnext;
+        }
+        if(l->hashnext !=NULL)
+        {
+          l->hashnext->hashpre = l->hashpre;
+        }
+        if(l->hashnext ==NULL&&l->hashpre == NULL)
+        {
+            ht[(l->lbn)%HASHLEN] = NULL;
+        }
+     
+    }
+    return l;
+}
+
+lnode HSLread(lnode *ht,llist lt,int lbn,int ms)
+{
+      int k=lbn%HASHLEN;
+      lnode p;
+      p = ht[k];
+      while(p)
+      {
+          if(p->lbn == lbn)
+          {
+            LRUread(lt,p,ms);
+            return p;
+          }
+          p = p->hashnext;
+      }
+      return NULL;
+}
+

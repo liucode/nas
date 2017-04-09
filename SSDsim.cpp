@@ -1,7 +1,7 @@
 #include "SSDsim.h"
 //init
 SSD::SSD(int ds,int bs, int ps, int ms,int khn,int mon,int p):
-disk_size(ds<<GB2KB),block_size(bs),page_size(ps),mem_size(ms<<MB2KB),k_hash_num(khn),m_offset_num(mon),policy(p)
+disk_size(ds<<GB2KB),block_size(bs),page_size(ps),mem_size(ms),k_hash_num(khn),m_offset_num(mon),policy(p)
 {
 
 	 int block_num = disk_size/block_size;
@@ -22,6 +22,7 @@ disk_size(ds<<GB2KB),block_size(bs),page_size(ps),mem_size(ms<<MB2KB),k_hash_num
    page_size = page_size<<KB2B;
    block_size = block_size<<KB2B;
    
+   dnum = 2;
    switch(policy)
 	 {			
 		  case PFTLNUM:
@@ -72,7 +73,11 @@ void SSD::randomTest(int n)
     int *lbns = new int[n];
     for(i=0;i<n;i++)
     {
-      int lbn = rand()%(disk_size/page_size);
+      //srand(i);
+      
+      int lbn = rand()%(disk_size/page_size*1024);
+      printf("mylbn:%d\n",lbn);
+      //lbn = mymd5(lbn)%(disk_size/page_size*1024);
       //int lbn = rand()%n;
       lbns[i] = lbn;
       writeSSD(lbn,'1');
@@ -90,7 +95,7 @@ void SSD::sequenceTest(int n)
     int i;
     for(i=0;i<n;i++)
     {
-      writeSSD(i+2,'1');
+      writeSSD(i,'1');
     }
 }
 

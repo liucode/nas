@@ -11,7 +11,8 @@
 #include <stdlib.h>
 #include "mytool.h"
 #define LOG 4
-#define DEBUG 0
+#define DEBUG 1
+#include <assert.h>
 class FTL
 {
 	public:
@@ -36,7 +37,9 @@ class FTL
 		int writePBN(int pbn,char *data);
 		char *readPBN(int pbn);
 		int fp;
-
+    
+    int pagefind=-1;//speed up page
+    int blockfind = -1;//speed up block
 
     //statistics
     int movenum =0;
@@ -45,7 +48,8 @@ class FTL
     int pagewritenum = 0;
     int overwritenum = 0;
 	  int tblocknum = 0;
-    
+    int findnum = 0;
+    int exreadnum = 0;
 };
 
 class PFTL:public FTL
@@ -158,7 +162,15 @@ class DFTL:public FTL
       cmt = (llist) malloc (sizeof(struct LRUlist));
       cmt->len = 0;
       cmt->head = NULL;
-    
+      
+      
+      ht = new lnode[HASHLEN];
+      for(int i=0;i<HASHLEN;i++)
+      {
+        ht[i] = NULL;
+      }
+
+   
       //init trans file
       tfp = open("tblock",O_RDWR|O_CREAT|O_DIRECT,0700);
       per_page = page_num/block_num;
@@ -174,6 +186,9 @@ class DFTL:public FTL
     int page_num;
     int tfp;
     llist cmt;//Cached Mapping Table
+    
+    lnode *ht;
+
     int *b_map;//Global Translation Directory
     int *p_valid;
     int *tb_valid;
@@ -215,8 +230,8 @@ class HFTL:public FTL
       per_page = page_num/block_num;
       
       //init cmt
-      cmt = new hnode[hashlen];
-      for(int i=0;i<hashlen;i++)
+      cmt = new hnode[HASHLEN];
+      for(int i=0;i<HASHLEN;i++)
       {
         cmt[i] = NULL;
       }
@@ -227,7 +242,6 @@ class HFTL:public FTL
       free(cmt);
     }
     private:
-    int hashlen = 100;
     
     hnode *cmt;
 
