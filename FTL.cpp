@@ -181,11 +181,12 @@ int BFTL::writeLOG(int lbn,char *data)
         assert(0);
     }
     sprintf((char*)align_buf,"%0512d",lbn);//complement lbn
-    if(write(logfp,align_buf,LBNLEN)==-1)
+    /*if(write(logfp,align_buf,LBNLEN)==-1)
     {
         printf("error write log\n");
         assert(0);
     }
+    */
     void *data_buf = NULL;
     if (posix_memalign(&data_buf,512,page_size)!= 0) 
     {

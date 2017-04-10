@@ -22,7 +22,6 @@ disk_size(ds<<GB2KB),block_size(bs),page_size(ps),mem_size(ms),k_hash_num(khn),m
    page_size = page_size<<KB2B;
    block_size = block_size<<KB2B;
    
-   dnum = 2;
    switch(policy)
 	 {			
 		  case PFTLNUM:
@@ -71,17 +70,22 @@ void SSD::randomTest(int n)
     if(n==0)
       n = disk_size/page_size*1024/2;
     int *lbns = new int[n];
+    time_t starts,ends;
     for(i=0;i<n;i++)
     {
       //srand(i);
-      
       int lbn = rand()%(disk_size/page_size*1024);
-      printf("mylbn:%d\n",lbn);
       //lbn = mymd5(lbn)%(disk_size/page_size*1024);
       //int lbn = rand()%n;
       lbns[i] = lbn;
+      if(i%100==0)
+        starts = clock();
       writeSSD(lbn,'1');
-      //printf("%d\n",i);
+      if((i+1)%100==0)
+      {
+        ends = clock();
+        printf("%d %d\n",i,ends-starts);
+      }
     }
     for(i=0;i<n;i++)
     {

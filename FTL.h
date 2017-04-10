@@ -11,7 +11,7 @@
 #include <stdlib.h>
 #include "mytool.h"
 #define LOG 4
-#define DEBUG 1
+#define DEBUG 0
 #include <assert.h>
 class FTL
 {

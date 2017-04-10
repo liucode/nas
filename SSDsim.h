@@ -1,5 +1,6 @@
 #include <stdio.h>
 #include "FTL.h"
+#include "time.h"
 #include <stdlib.h>
 #define GB2MB 10
 #define GB2KB 20

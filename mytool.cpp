@@ -272,17 +272,23 @@ lnode HSLinsert(lnode *ht,llist lt,int lbn,int pbn,int ms)
     }
     if(l!=NULL)
     {
-        if(l->hashpre !=NULL)
+        if(l->hashpre !=NULL&&l->hashnext!=NULL)
         {
           l->hashpre->hashnext = l->hashnext;
-        }
-        if(l->hashnext !=NULL)
-        {
           l->hashnext->hashpre = l->hashpre;
         }
-        if(l->hashnext ==NULL&&l->hashpre == NULL)
+        else if(l->hashpre !=NULL&&l->hashnext ==NULL)
         {
-            ht[(l->lbn)%HASHLEN] = NULL;
+           l->hashpre->hashnext = l->hashnext;//NULL
+        }
+        else if(l->hashnext !=NULL&&l->hashpre == NULL)
+        {
+            ht[(l->lbn)%HASHLEN] = l->hashnext;
+            ht[(l->lbn)%HASHLEN]->hashpre = NULL;
+        }
+        else
+        {
+          ht[(l->lbn)%HASHLEN] =  NULL;
         }
      
     }
@@ -304,5 +310,26 @@ lnode HSLread(lnode *ht,llist lt,int lbn,int ms)
           p = p->hashnext;
       }
       return NULL;
+}
+
+int HSLprint(llist lt)
+{
+  lnode p = lt->head;
+  if(p)
+  {
+    while(p->next)
+  {
+    p = p->next;
+  }
+  if(lt->tail->lbn!=p->lbn)
+  {
+    return 0;
+  }
+  else
+  {
+    return 1;
+  }
+  }
+  return 1;
 }
 

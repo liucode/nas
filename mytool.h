@@ -43,6 +43,6 @@ lnode NMfind(llist list,int lbn);
 lnode HSLinsert(lnode *ht,llist lt,int lbn,int pbn,int ms);
 lnode HSLread(lnode *ht,llist lt,int lbn,int ms);
 
-
+int HSLprint(llist lt);
 int mymd5(int input);
 
