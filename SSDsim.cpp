@@ -63,6 +63,39 @@ char* SSD::readSSD(int lbn)
   data = myftl->readFTL(lbn);
   return data;
 }
+void SSD::zfTest(int n)
+{
+    int i;
+    if(n==0)
+      n = disk_size/page_size*1024/2;
+    int *lbns = new int[n];
+    time_t starts,ends;
+    struct GenInfo * gis;
+    gis = generator_new_zipfian(0, disk_size/page_size*1024);
+    for(i=0;i<n;i++)
+    {
+      //srand(i);
+      int lbn = rand()%(disk_size/page_size*1024);
+      //lbn = mymd5(lbn)%(disk_size/page_size*1024);
+      //int lbn = rand()%n;
+      lbn = gis->next(gis);
+      lbns[i] = lbn;
+      if(i%100==0)
+        starts = clock();
+      writeSSD(lbn,'1');
+      if((i+1)%100==0)
+      {
+        ends = clock();
+        printf("%d %d\n",i,ends-starts);
+      }
+    }
+    for(i=0;i<n;i++)
+    {
+      //readSSD(lbns[i]);
+      //printf("%d:%s\n",lbns[i],readSSD(lbns[i]));
+    }
+    printf("random test ok\n");
+}
 
 void SSD::randomTest(int n)
 {
@@ -94,12 +127,57 @@ void SSD::randomTest(int n)
     }
     printf("random test ok\n");
 }
+void SSD::srTest(int r,int n)
+{
+  int i;
+  time_t starts,ends;
+  if(n==0)
+    n = disk_size/page_size*1024/2;
+  int *lbns = new int[n];
+  int k=0;
+  for(i=0;i<n;i++)
+  {
+    int lbn = rand()%(disk_size/page_size*1024);
+    lbns[k] = lbn;
+    writeSSD(lbn,'1');
+    if((i+1)%r==0)
+    {
+      int readi = rand()%(1);
+      readSSD(lbns[readi]);
+      if(i%100==0)
+        starts = clock();
+      if((i+1)%100==0)
+      {
+        ends = clock();
+        printf("%d %d\n",i,ends-starts);
+      }
+      i++;
+    }//if
+     if(i%100==0)
+        starts = clock();
+      if((i+1)%100==0)
+      {
+        ends = clock();
+        printf("%d %d\n",i,ends-starts);
+      }
+    k++;
+  }//for
+}
+
 void SSD::sequenceTest(int n)
 {
     int i;
+    time_t starts,ends;
     for(i=0;i<n;i++)
     {
       writeSSD(i,'1');
+      if(i%100==0)
+        starts = clock();
+      if((i+1)%100==0)
+      {
+        ends = clock();
+        printf("%d %d\n",i,ends-starts);
+      }
     }
 }
 

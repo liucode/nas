@@ -3,12 +3,13 @@
 
 void FTL::printSTATE()
 {
- printf("the number of moving:%d\nthe number of writing in log:%d\nthe number of cache hit:%d\nthe number of page writing:%d\nthe number of overwriting:%d\nthe number of translation block writing:%d\nthe number of find:%d\nthe number of ex read:%d\n",movenum,logwritenum,cachenum,pagewritenum,overwritenum,tblocknum,findnum,exreadnum);
+ printf("the number of moving:%d\nthe number of writing in log:%d\nthe number of cache hit:%d\nthe number of page writing:%d\nthe number of overwriting:%d\nthe number of translation block writing:%d\nthe number of find:%d\nthe number of ex read:%d\nthe number of read bypass:%d\nthe number of page reading:%d\n",movenum,logwritenum,cachenum,pagewritenum,overwritenum,tblocknum,findnum,exreadnum,readbypass,pagereadnum);
 }
 
 char* FTL::readPBN(int pbn)
 {
-	if(DEBUG)
+	pagereadnum++;
+  if(DEBUG)
     printf("read pbn:%d\n",pbn);
   void *align_buf = NULL;
   if (posix_memalign(&align_buf,DATALEN,page_size) != 0) 
@@ -29,8 +30,6 @@ int FTL::writePBN(int pbn,char *data)
   if(DEBUG)
     printf("write pbn:%d\n",pbn);
   pagewritenum++;
-  
-
   void *align_buf = NULL;
   if (posix_memalign(&align_buf,DATALEN,page_size) != 0) 
   {
@@ -44,7 +43,7 @@ int FTL::writePBN(int pbn,char *data)
     printf("error writePBN\n");
     assert(0);
   }
-	return 1;
+  return 1;
 }
 
 
@@ -310,14 +309,22 @@ int DFTL::writeFTL(int lbn,char *data)
   {
     p_valid[findnode->pbn] = INVALID;
     cmt->head->pbn = pbn;
+    readflag[cmt->head->lbn] = FREE;
     if(DEBUG)
-    printf("in cache %d\n",lbn);  
+      printf("in cache %d\n",lbn);  
     cachenum++;
     return 1;
   }
   else
   {
     lnode m = HSLinsert(ht,cmt,lbn,pbn,ms);
+    delNode(m);
+  }
+	return 1;
+}
+
+int DFTL::delNode(lnode m)
+{
   //if NULL,NO write 
     if(m == NULL)
     {
@@ -379,17 +386,14 @@ int DFTL::writeFTL(int lbn,char *data)
                 tb_valid[newpbn*per_page+i] = VALID;
                 tb_valid[oldpbn*per_page+i] = FREE;
                 tblocknum++;
-              }
+              }//if
           }//for
           b_map[b_lbn] = newpbn;
           valid[oldpbn] = FREE;
           valid[newpbn] = VALID;
         }//else
-      }
-    }
-        
-  }
-	return 1;
+      }//else
+    }//else real
 }
 
 char* DFTL::readFTL(int lbn)
@@ -415,6 +419,16 @@ char* DFTL::readFTL(int lbn)
       printf("read tbblock:%d\n",tbpbn);
     pread(tfp,tbdata_t,LBNLEN/sizeof(char),tbpbn*LBNLEN);
     realpbn = atoi(tbdata_t);
+    readflag[lbn] = VALID;
+    lnode m = HSLinsert(ht,cmt,lbn,realpbn,ms);
+    if(readflag[m->lbn]==FREE)
+      delNode(m);
+    else
+    {
+      readbypass++;
+      if(DEBUG)
+        printf("read bypass:%d\n");
+    }
   }
   
   char *data = new char[10];
@@ -482,8 +496,9 @@ int HFTL::writeFTL(int lbn,char *data)
      tblocknum++; 
      if(DEBUG)
         printf("not found free page\n");
-      for(int i=0;i<page_num;i++)
+      for(int i=pagefind+1;i<page_num+pagefind;i++)
       {
+        i = i%page_num;
         if(i%per_page==0&&p_valid[i] == FREE||p_valid[i] == FREE&&p_valid[i-1] != FREE)
         {
           truepbn = i;
@@ -499,7 +514,7 @@ int HFTL::writeFTL(int lbn,char *data)
   }
   else
   {
-    if(truepbn!=0)
+    if(truepbn!=-1)
     {
       writePBN(truepbn,data);
     }

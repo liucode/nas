@@ -50,6 +50,8 @@ class FTL
 	  int tblocknum = 0;
     int findnum = 0;
     int exreadnum = 0;
+    int readbypass =0;
+    int pagereadnum =0;
 };
 
 class PFTL:public FTL
@@ -155,8 +157,8 @@ class DFTL:public FTL
 			memset(tb_valid,FREE,sizeof(int)*page_num);
    	  
       //init OOB
-      OOB = new int[page_num];
-			memset(p_valid,FREE,sizeof(int)*page_num);
+      readflag = new int[page_num];
+			memset(readflag,FREE,sizeof(int)*page_num);
    		
       //init cmt
       cmt = (llist) malloc (sizeof(struct LRUlist));
@@ -169,8 +171,6 @@ class DFTL:public FTL
       {
         ht[i] = NULL;
       }
-
-   
       //init trans file
       tfp = open("tblock",O_RDWR|O_CREAT|O_DIRECT,0700);
       per_page = page_num/block_num;
@@ -189,11 +189,12 @@ class DFTL:public FTL
     
     lnode *ht;
 
+    int *readflag;
+
     int *b_map;//Global Translation Directory
     int *p_valid;
     int *tb_valid;
     int per_page;
-    int *OOB;
     int ms;
     protected:
 		int findFreePagePBN();
@@ -202,6 +203,7 @@ class DFTL:public FTL
 	  int writeFTL(int lbn,char*data);
     char* readFTL(int lbn);
     void liupwrite(int fp,int data,int len,int offset);
+    int delNode(lnode m);
 };
 
 

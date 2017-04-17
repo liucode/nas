@@ -1,4 +1,5 @@
 #include <stdio.h>
+#include "generator.h"
 #include "FTL.h"
 #include "time.h"
 #include <stdlib.h>
@@ -19,6 +20,8 @@ class SSD{
     void randomTest(int n);
     void sequenceTest(int n);
     void printSTATE();
+    void srTest(int r,int n);
+    void zfTest(int n);
     ~SSD()
     {
       delete myftl;
