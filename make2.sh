@@ -2,5 +2,5 @@ g++ -lssl -lcrypto -O0 -g3 -rdynamic ./main.cpp SSDsim.cpp FTL.cpp mytool.cpp ge
 for i in 1 3 4
 do
   fstrim /mnt
-  ./test $i 800 5 5 64 1
+  ./test $i 800 5 5 64 2
 done

@@ -1,4 +1,6 @@
 #include <stdio.h>
+#include <sys/time.h>
+#include <inttypes.h>
 #include "generator.h"
 #include "FTL.h"
 #include "time.h"
@@ -12,10 +14,13 @@
 #define BFTLNUM 2
 #define DFTLNUM 3
 #define HFTLNUM 4
+
+
+
 class SSD{
 	public:
 		SSD(int disk_size,int block_size, int page_size, int mem_size,int k_hash_num,int m_offset_num,int policy);
-		void writeSSD(int lbn,char ch);
+		void writeSSD(int lbn,char *data);
     char* readSSD(int lbn);
     void randomTest(int n);
     void sequenceTest(int n);
@@ -26,6 +31,7 @@ class SSD{
     {
       delete myftl;
     }
+		FTL *myftl;
 	private:
 		int disk_size;// GB
 		int block_size;//KB
@@ -38,5 +44,4 @@ class SSD{
 		
 		int policy;
 		
-		FTL *myftl;
 };

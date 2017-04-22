@@ -18,7 +18,8 @@ class FTL
 	public:
 		FTL(int page_size,int block_size):page_size(page_size),block_size(block_size)
 		{
-		    fp = open("data",O_RDWR | O_CREAT|O_DIRECT,0700);
+		  //fp = open("/dev/sdc",O_RDWR | O_CREAT|O_DIRECT,0700);
+      fp = open("/mnt/data-log",O_RDWR | O_CREAT|O_DIRECT,0700);
     }
     ~FTL()
     {
@@ -28,7 +29,10 @@ class FTL
 		virtual int  writeFTL(int lbn,char *data){};
     void printSTATE();
 		virtual char *readFTL(int lbn){};
-	protected:
+	  virtual void gc(){};
+		int fp;
+    long findnum = 0;
+  protected:
 		int block_size;
 		int page_size;
 		int *valid;
@@ -36,7 +40,6 @@ class FTL
 		virtual int findPBN(int lbn){};
 		int writePBN(int pbn,char *data);
 		char *readPBN(int pbn);
-		int fp;
     
     int pagefind=-1;//speed up page
     int blockfind = -1;//speed up block
@@ -48,7 +51,6 @@ class FTL
     int pagewritenum = 0;
     int overwritenum = 0;
 	  int tblocknum = 0;
-    int findnum = 0;
     int exreadnum = 0;
     int readbypass =0;
     int pagereadnum =0;
@@ -58,7 +60,7 @@ class PFTL:public FTL
 {
 	public:
 		int *p_map;
-		PFTL(int page_num,int page_size):FTL(page_size,0),page_num(page_num)
+		PFTL(int page_num,int page_size,int block_num):FTL(page_size,0),page_num(page_num),block_num(block_num)
 		{
 
 			//init p_map-->LBN->PBN
@@ -72,11 +74,13 @@ class PFTL:public FTL
 		
 	private:
 		int page_num;
+    int block_num;
 	protected:
 		int findFreePBN();
 		int findPBN(int lbn);
 	  int writeFTL(int lbn,char*data);
     char* readFTL(int lbn);
+    void gc();
 };
 
 class BFTL:public FTL
@@ -203,6 +207,8 @@ class DFTL:public FTL
 	  int writeFTL(int lbn,char*data);
     char* readFTL(int lbn);
     void liupwrite(int fp,int data,int len,int offset);
+    void liupread(int fp,char* data,int len,int offset);
+    
     int delNode(lnode m);
 };
 
@@ -210,15 +216,20 @@ class DFTL:public FTL
 class HFTL:public FTL
 {
   	public:
-		HFTL(int block_num,int block_size,int page_num,int page_size,int ms,int khn,int mon):FTL(page_size,block_size),block_num(block_num),page_num(page_num),khn(khn),mon(mon)
+		HFTL(int block_num,int block_size,int page_num,int page_size,int ms,int khn,int mon,int hlen):FTL(page_size,block_size),block_num(block_num),page_num(page_num),khn(khn),mon(mon),hlen(hlen)
 		{
 			//init p_map-->LBN->PBN Global Translation Directory
 			p_map = new int[page_num];
 			memset(p_map,-1,sizeof(int)*page_num);
 
 			//init valid :get it used hash()
-	    valid = new int[block_num];
-			memset(valid,FREE,sizeof(int)*block_num);
+	    lvalid = new long[block_num];
+			memset(lvalid,FREE,sizeof(long)*block_num);
+      
+      //init ex-valid :get it used hash()
+	    e_valid = new int[hlen];
+			memset(e_valid,FREE,sizeof(int)*hlen);
+
 
       //init page valid
       p_valid = new int[page_num];
@@ -243,10 +254,12 @@ class HFTL:public FTL
     {
       free(cmt);
     }
+    void gc();
     private:
-    
+    long *lvalid;
+    int *e_valid;
     hnode *cmt;
-
+    int hlen;
     int khn;// n binary
     int mon;
 
@@ -262,10 +275,9 @@ class HFTL:public FTL
     int *OOB;
     int *p_map;
 
-    int truepbn;
     
     protected:
-		int findFreePBN(int lbn);
+		int findFreePBN(int lbn,int &tpbn);
     int findTruePBN(int lbn,int pbn);
 		int findPBN(int lbn);
 	  int writeFTL(int lbn,char*data);

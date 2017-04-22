@@ -1,6 +1,6 @@
 g++ -lssl -lcrypto -O0 -g3 -rdynamic ./main.cpp SSDsim.cpp FTL.cpp mytool.cpp generator.c -o test
-for i in 1 3 4
+for i in 400 500 600 700
 do
   fstrim /mnt
-  ./test $i 800 5 5 64 1
+  ./test 3 $i 5 5 64 2
 done

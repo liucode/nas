@@ -12,10 +12,10 @@ disk_size(ds<<GB2KB),block_size(bs),page_size(ps),mem_size(ms),k_hash_num(khn),m
    int bftl_level = block_num*4/1024;
    
    int dftl_level = bftl_level;//second size
-   int dnum  = (mem_size - dftl_level)/8*1024;//first num;
+   int dnum  = (mem_size - dftl_level)/4*1024;//first num;
 
-   int hftl_level = (k_hash_num+m_offset_num)*page_num/32/1024;//first
-   int hftl_len = (mem_size-hftl_level)/8*1024;
+   int hftl_level = (k_hash_num+m_offset_num)*page_num/8/1024;//first
+   int hftl_len = (mem_size-hftl_level)/4*1024;
 
    printf("page:%d\nblock:%d\nDFTL cache num:%d\nHFTL table num:%d\n",pftl_level,bftl_level,dnum,hftl_len);
    
@@ -26,7 +26,7 @@ disk_size(ds<<GB2KB),block_size(bs),page_size(ps),mem_size(ms),k_hash_num(khn),m
 	 {			
 		  case PFTLNUM:
         {
-          PFTL *pftl = new PFTL(page_num,page_size);
+          PFTL *pftl = new PFTL(page_num,page_size,block_num);
 	        myftl = pftl;
         }
         break;
@@ -43,19 +43,31 @@ disk_size(ds<<GB2KB),block_size(bs),page_size(ps),mem_size(ms),k_hash_num(khn),m
         }
         break;
        case HFTLNUM:
-        {
-          HFTL *hftl = new HFTL(block_num,block_size,page_num,page_size,mem_size,khn,mon);
+       {
+          HFTL *hftl = new HFTL(block_num,block_size,page_num,page_size,mem_size,khn,mon,hftl_len);
           myftl = hftl;
         }
         break;
         
 	 }
 }
-void SSD::writeSSD(int lbn,char ch)//data struct
+uint64_t
+debug_time_usec(void)
 {
-  char *data = new char[page_size/sizeof(char)];
-	memset(data,ch,page_size/sizeof(char));
-	myftl->writeFTL(lbn,data);
+    struct timeval tv;
+    gettimeofday(&tv, NULL);
+    return tv.tv_sec * 1000000lu + tv.tv_usec;
+}
+
+double
+debug_time_sec(void)
+{
+    const uint64_t usec = debug_time_usec();
+    return ((double)usec);
+}
+void SSD::writeSSD(int lbn,char* data)//data struct
+{
+ 	myftl->writeFTL(lbn,data);
 }
 char* SSD::readSSD(int lbn)
 {
@@ -69,24 +81,45 @@ void SSD::zfTest(int n)
     if(n==0)
       n = disk_size/page_size*1024/2;
     int *lbns = new int[n];
-    time_t starts,ends;
+    char *data = new char[page_size/sizeof(char)];
+		memset(data,'5',page_size/sizeof(char));
+		void *align_buf = NULL;
+  	if (posix_memalign(&align_buf,DATALEN,page_size) != 0)  
+  	{
+        printf("memalign failed\n");
+        assert(0);
+  	}
+		strcpy((char *)align_buf,data);
+    double starts,ends;
+    double s,e;
     struct GenInfo * gis;
     gis = generator_new_zipfian(0, disk_size/page_size*1024);
+    int lbn;
+    for(i=0;i<n;i++)
+    {
+      while(true)
+      {
+        lbn = gis->next(gis);
+        if(lbn>10)
+            break;
+      }
+      lbns[i] = lbn;
+    }
+    s = debug_time_sec();
     for(i=0;i<n;i++)
     {
       //srand(i);
-      int lbn = rand()%(disk_size/page_size*1024);
+      //int lbn = rand()%(disk_size/page_size*1024);
       //lbn = mymd5(lbn)%(disk_size/page_size*1024);
       //int lbn = rand()%n;
-      lbn = gis->next(gis);
-      lbns[i] = lbn;
+      lbn = lbns[i];
       if(i%100==0)
-        starts = clock();
-      writeSSD(lbn,'1');
+        starts = debug_time_sec();
+      writeSSD(lbn,(char *)align_buf);
       if((i+1)%100==0)
       {
-        ends = clock();
-        printf("%d %d\n",i,ends-starts);
+        ends = debug_time_sec();
+        printf("%d %f %d\n",i,ends-starts,myftl->findnum);
       }
     }
     for(i=0;i<n;i++)
@@ -94,6 +127,9 @@ void SSD::zfTest(int n)
       //readSSD(lbns[i]);
       //printf("%d:%s\n",lbns[i],readSSD(lbns[i]));
     }
+    fsync(myftl->fp);
+    e = debug_time_sec();
+    printf("time:%f\n",e-s);
     printf("random test ok\n");
 }
 
@@ -101,25 +137,44 @@ void SSD::randomTest(int n)
 {
     int i;
     if(n==0)
-      n = disk_size/page_size*1024/2;
+      n = disk_size/page_size*1024;
     int *lbns = new int[n];
-    time_t starts,ends;
+    char *data = new char[page_size/sizeof(char)];
+		memset(data,'5',page_size/sizeof(char));
+		void *align_buf = NULL;
+  	if (posix_memalign(&align_buf,DATALEN,page_size) != 0)  
+  	{
+        printf("memalign failed\n");
+        assert(0);
+  	}
+		strcpy((char *)align_buf,data);
+    double starts,ends;
+    double s,e;
+    int lbn;
+    for(i=0;i<n;i++)
+    {
+      lbns[i] = rand()%(disk_size/page_size*1024-1);
+    }
+    s = debug_time_sec();
     for(i=0;i<n;i++)
     {
       //srand(i);
-      int lbn = rand()%(disk_size/page_size*1024);
-      //lbn = mymd5(lbn)%(disk_size/page_size*1024);
+      //lbn = mymd5(lbn)%(disk_size/page_size*1024-1);
       //int lbn = rand()%n;
-      lbns[i] = lbn;
+      lbn = lbns[i];
       if(i%100==0)
-        starts = clock();
-      writeSSD(lbn,'1');
+        starts = debug_time_sec();
+      writeSSD(lbn,(char *)align_buf);
       if((i+1)%100==0)
       {
-        ends = clock();
-        printf("%d %d\n",i,ends-starts);
+        ends = debug_time_sec();
+        printf("%d %lf %d\n",i,ends-starts,myftl->findnum);
       }
     }
+    //myftl->gc();
+    fsync(myftl->fp);
+    e = debug_time_sec();
+    printf("time:%f\n",e-s);
     for(i=0;i<n;i++)
     {
       //readSSD(lbns[i]);
@@ -139,10 +194,10 @@ void SSD::srTest(int r,int n)
   {
     int lbn = rand()%(disk_size/page_size*1024);
     lbns[k] = lbn;
-    writeSSD(lbn,'1');
+    //writeSSD(lbn,'1');
     if((i+1)%r==0)
     {
-      int readi = rand()%(1);
+      int readi = rand()%(k);
       readSSD(lbns[readi]);
       if(i%100==0)
         starts = clock();
@@ -170,7 +225,7 @@ void SSD::sequenceTest(int n)
     time_t starts,ends;
     for(i=0;i<n;i++)
     {
-      writeSSD(i,'1');
+      //writeSSD(i,'1');
       if(i%100==0)
         starts = clock();
       if((i+1)%100==0)
