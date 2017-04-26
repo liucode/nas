@@ -133,6 +133,74 @@ void SSD::zfTest(int n)
     printf("random test ok\n");
 }
 
+void SSD::fileTest(int n,char* name)
+{
+    int i;
+    if(n==0)
+      n = disk_size/page_size*1024;
+    int *lbns = new int[n];
+    int *rws = new int[n];
+    char *data = new char[page_size/sizeof(char)];
+		memset(data,'5',page_size/sizeof(char));
+		void *align_buf = NULL;
+  	if (posix_memalign(&align_buf,DATALEN,page_size) != 0)  
+  	{
+        printf("memalign failed\n");
+        assert(0);
+  	}
+		strcpy((char *)align_buf,data);
+    double starts,ends;
+    double s,e;
+    int lbn;
+    char rw[2];
+    char rlbn[20];
+    printf("name :%s\n",name);
+    FILE *readfp = fopen(name,"r");
+    if(readfp==NULL)
+    {
+      printf("open error\n");
+      assert(0);
+    }
+    for(i=0;i<n;i++)
+    {
+      if(feof(readfp))
+        n = i;
+      fscanf(readfp,"%s",rw);
+      fscanf(readfp,"%s",rlbn);
+      rws[i] = atoi(rw);
+      lbns[i] = atoi(rlbn);
+    }
+    s = debug_time_sec();
+    for(i=0;i<n;i++)
+    {
+      //srand(i);
+      //lbn = mymd5(lbn)%(disk_size/page_size*1024-1);
+      //int lbn = rand()%n;
+      lbn = lbns[i];
+      if(i%100==0)
+        starts = debug_time_sec();
+      if(rws[i]==1)
+        writeSSD(lbn,(char *)align_buf);
+      else
+        readSSD(lbn);
+      if((i+1)%100==0)
+      {
+        ends = debug_time_sec();
+        printf("%d %lf %d\n",i,ends-starts,myftl->findnum);
+      }
+    }
+    //myftl->gc();
+    fsync(myftl->fp);
+    e = debug_time_sec();
+    printf("time:%f\n",e-s);
+    for(i=0;i<n;i++)
+    {
+      //readSSD(lbns[i]);
+      //printf("%d:%s\n",lbns[i],readSSD(lbns[i]));
+    }
+    printf("random test ok\n");
+}
+
 void SSD::randomTest(int n)
 {
     int i;

@@ -61,6 +61,7 @@ int PFTL::writeFTL(int lbn,char *data)
     if(DEBUG)
       printf("overwrite\n");
     overwritenum++;
+    //printf("ov %d\n",lbn);
     valid[p_map[lbn]] = INVALID;
   }
   p_map[lbn] = pbn;
@@ -536,7 +537,14 @@ int HFTL::writeFTL(int lbn,char *data)
 {
   if(p_map[lbn] != -1)//overwrite
   {
-      overwritenum++;
+      if(p_map[lbn]!=(pow(2,khn)-1)*pow(2,mon))
+      {
+        overwritenum++;
+      }
+      else
+      {
+        cachenum++;
+      }
       if(DEBUG)
         printf("overwrite lbn:%d\n",lbn);
       int oldpbn = findTruePBN(lbn,p_map[lbn]);

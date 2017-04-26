@@ -27,6 +27,7 @@ class SSD{
     void printSTATE();
     void srTest(int r,int n);
     void zfTest(int n);
+    void fileTest(int n,char* name);
     ~SSD()
     {
       delete myftl;

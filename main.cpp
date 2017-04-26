@@ -16,8 +16,10 @@ int main(int argc, char *argv[])
     int sle = atoi(argv[6]);
     if(sle == 1)
       ssd->zfTest(16000000);
-    else
+    else if(sle == 2)
       ssd->randomTest(16000000);
+    else
+      ssd->fileTest(1000000,argv[7]);
     //ssd->srTest(4,100000);
     //ssd->sequenceTest(100000);
     ssd->printSTATE();

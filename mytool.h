@@ -2,7 +2,7 @@
 #include "stdlib.h"
 #include "string.h"
 #include "openssl/md5.h"
-#define HASHLEN 10000
+#define HASHLEN 1000000
 typedef struct LRUnode
 {
   struct LRUnode *next;
